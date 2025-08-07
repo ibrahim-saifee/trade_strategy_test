@@ -20,19 +20,19 @@ const formattedDate = (date) => date ? `${date.format("MMM DD, YYYY ddd HH:mm:ss
 
 const tradeDecision = (previousTrades) => {
   const recentTrade = previousTrades[previousTrades.length - 1];
-  const previousToRecent = previousTrades[previousTrades.length - 2];
+  // const previousToRecent = previousTrades[previousTrades.length - 2];
 
   if (recentTrade?.stoplossHit) {
     return recentTrade.buyOrSell * -1;
-    if (previousToRecent?.stoplossHit) {
-      if (recentTrade?.buyOrSell === previousToRecent?.buyOrSell) {
-        return recentTrade.buyOrSell * -1;
-      } else {
-        return recentTrade.buyOrSell;
-      }
-    } else {
-      return recentTrade.buyOrSell * -1;
-    }
+    // if (previousToRecent?.stoplossHit) {
+    //   if (recentTrade?.buyOrSell === previousToRecent?.buyOrSell) {
+    //     return recentTrade.buyOrSell * -1;
+    //   } else {
+    //     return recentTrade.buyOrSell;
+    //   }
+    // } else {
+    //   return recentTrade.buyOrSell * -1;
+    // }
   } else if (recentTrade?.targetHit) {
     return recentTrade.buyOrSell;
   }
@@ -79,8 +79,10 @@ const trade = (candlesData, target, initialStoploss, previousTrades) => {
     }
 
     if (pnl >= trailStoploss) {
+      // stoploss = trailStoploss - TRAIL_STOPLOSS_AT;
+      // trailStoploss += Math.abs(STOPLOSS);
       stoploss = trailStoploss - TRAIL_STOPLOSS_AT;
-      trailStoploss += Math.abs(STOPLOSS);
+      trailStoploss += trailStoploss;
     }
   }
 

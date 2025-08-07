@@ -6,15 +6,33 @@ const {
 
 const moment = require("moment");
 const { setLogger, logInfo } = require("./logger");
-const currentTimestamp = moment().format("_YYYYMMDDHHmm");
-const logFileName = FILE_NAME.replace(/.csv$/, `${currentTimestamp}.log`);
-setLogger(logFileName);
 
 const { backtest } = require("./strategy");
 const { readCsvInBatches } = require("./read_file");
 const { delay } = require("./delay");
 
-const calculateWinningProbability = (totalTargetCount, totalStoplossCount) =>
+const getArg = (argument) => {
+  const value = process.argv.find(arg => arg.match(`^${argument}=`)) || '';
+  return value.replace(`${argument}=`, '');
+};
+
+const calculateStandardDeviation = (numbers) => {
+  // Step 1: Calculate the mean (average)
+  const mean = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+
+  // Step 2: Calculate the squared differences from the mean
+  const squaredDiffs = numbers.map(value => Math.pow(value - mean, 2));
+
+  // Step 3: Calculate the average of the squared differences (variance)
+  const variance = squaredDiffs.reduce((sum, value) => sum + value, 0) / numbers.length;
+
+  // Step 4: Take the square root of the variance (standard deviation)
+  const standardDeviation = Math.sqrt(variance);
+
+  return standardDeviation;
+}
+
+const percentage = (totalTargetCount, totalStoplossCount) =>
   (totalTargetCount + totalStoplossCount) > 0
   ? totalTargetCount * 100 / (totalTargetCount + totalStoplossCount)
   : 0;
@@ -38,7 +56,7 @@ const processBatch = (filePath) => {
         maxDrawDown = totalPnl < maxDrawDown ? totalPnl : maxDrawDown;
         totalTrades += noOfTrades;
 
-        const winningProbability = calculateWinningProbability(
+        const winningProbability = percentage(
           totalTargetCount,
           totalStoplossCount,
         ).toFixed(2);
@@ -59,7 +77,7 @@ const processBatch = (filePath) => {
           totalPnl,
           totalTargetCount,
           totalStoplossCount,
-          winningProbability: calculateWinningProbability(totalTargetCount, totalStoplossCount),
+          winningProbability: percentage(totalTargetCount, totalStoplossCount),
           maxDrawDown,
           totalTrades,
         });
@@ -67,6 +85,11 @@ const processBatch = (filePath) => {
     );
   });
 }
+
+const currentTimestamp = moment().format("_YYYYMMDDHHmm");
+const fileName = getArg("file") || FILE_NAME;
+const logFileName = fileName.replace(/.csv$/, `${currentTimestamp}.log`);
+setLogger(logFileName);
 
 (async () => {
   let averages = {
@@ -78,7 +101,7 @@ const processBatch = (filePath) => {
 
   const pnlArray = [];
   for (let i = 0; i < SAMPLE_SIZE; i++) {
-    const backtestResult = await processBatch(`./data_dumps/${FILE_NAME}`);
+    const backtestResult = await processBatch(`./data_dumps/${fileName}`);
 
     Object.keys(averages).forEach((param) => {
       averages[param] += backtestResult[param] || 0;
@@ -94,26 +117,23 @@ const processBatch = (filePath) => {
 
   averages.standardDeviation = calculateStandardDeviation(pnlArray);
 
+  logInfo(`------------- ${fileName} --------------`);
   logInfo(`Averages (Sample Size: ${SAMPLE_SIZE})`);
   Object.entries(averages).forEach(([param, value]) => logInfo(`${param}:`, value));
-  Object.entries(configParameters).forEach(([param, value]) => logInfo(`${param}:`, value));
+  Object.entries({ 
+    ...configParameters, 
+    FILE_NAME: fileName 
+  }).forEach(([param, value]) => logInfo(`${param}:`, value));
 
+  const profitableYears = pnlArray.filter(pnl => pnl > 0).length;
+  const loosingYears = pnlArray.filter(pnl => pnl <= 0).length;
   logInfo("---------------------------------------");
+  logInfo("Profitable Years", profitableYears, "| Loosing Years", loosingYears, `| (${percentage(profitableYears, loosingYears)}%)`);
+
+  const maxProfit = pnlArray.reduce((max, n) => max > n ? max : n, 0);
+  const maxLoss = pnlArray.reduce((min, n) => min < n ? min : n, pnlArray[0]);
+  logInfo("Max Profit", maxProfit, "| Max Loss", maxLoss);
+
   logInfo("Average P&L:", averages.totalPnl, pnlArray);
+  logInfo("=======================================");
 })();
-
-const calculateStandardDeviation = (numbers) => {
-  // Step 1: Calculate the mean (average)
-  const mean = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
-
-  // Step 2: Calculate the squared differences from the mean
-  const squaredDiffs = numbers.map(value => Math.pow(value - mean, 2));
-
-  // Step 3: Calculate the average of the squared differences (variance)
-  const variance = squaredDiffs.reduce((sum, value) => sum + value, 0) / numbers.length;
-
-  // Step 4: Take the square root of the variance (standard deviation)
-  const standardDeviation = Math.sqrt(variance);
-
-  return standardDeviation;
-}
