@@ -1,6 +1,6 @@
 module.exports = {
   // FILE_NAME: "NIFTY_50_2019_2023.csv",
-  FILE_NAME: "NIFTY_50_2023.csv",
+  FILE_NAME: "NIFTY_50_2022.csv",
   SAMPLE_SIZE: 1000,
 
   LOT_SIZE: 75,
@@ -10,7 +10,8 @@ module.exports = {
   // Nifty points
   TARGET: 200,
   STOPLOSS: -50,
-  TRAIL_STOPLOSS_AT: 75,
+  TRAILING_STOPLOSS: 75,
+  TRAIL_STOPLOSS_AT_MARKET_MOVEMENT: 25,
 
   DAY_STOPLOSS: 0,
 

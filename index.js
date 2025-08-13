@@ -37,6 +37,9 @@ const percentage = (totalTargetCount, totalStoplossCount) =>
   ? totalTargetCount * 100 / (totalTargetCount + totalStoplossCount)
   : 0;
 
+const min = (a, b) => a < b ? a : b;
+const max = (a, b) => a > b ? a : b;
+
 const processBatch = (filePath) => {
   let totalPnl = 0;
   let totalTargetCount = 0;
@@ -44,17 +47,27 @@ const processBatch = (filePath) => {
   let maxDrawDown = 0;
   let totalTrades = 0;
 
+  let maxPerDayLoss = 0;
+  let maxPerDayProfit = 0;
+  let totalProfitableDays = 0;
+  let totalLoosingDays = 0;
+
   return new Promise((resolve, reject) => {
     readCsvInBatches(
       filePath,
       (data) => {
         const { pnl, targetCount, stoplossCount, totalTrades: noOfTrades } = backtest(data);
-
+        
         totalPnl += pnl;
         totalTargetCount += targetCount;
         totalStoplossCount += stoplossCount;
-        maxDrawDown = totalPnl < maxDrawDown ? totalPnl : maxDrawDown;
         totalTrades += noOfTrades;
+        
+        maxPerDayLoss = min(maxPerDayLoss, pnl);
+        maxPerDayProfit = max(maxPerDayProfit, pnl);
+        maxDrawDown = min(maxDrawDown, totalPnl);
+        totalProfitableDays += pnl > 0 ? 1 : 0;
+        totalLoosingDays += pnl < 0 ? 1 : 0;
 
         const winningProbability = percentage(
           totalTargetCount,
@@ -80,6 +93,10 @@ const processBatch = (filePath) => {
           winningProbability: percentage(totalTargetCount, totalStoplossCount),
           maxDrawDown,
           totalTrades,
+          maxPerDayLoss,
+          maxPerDayProfit,
+          totalProfitableDays,
+          totalLoosingDays,
         });
       }
     );
@@ -97,6 +114,10 @@ setLogger(logFileName);
     winningProbability: 0,
     maxDrawDown: 0,
     totalTrades: 0,
+    maxPerDayLoss: 0,
+    maxPerDayProfit: 0,
+    totalProfitableDays: 0,
+    totalLoosingDays: 0,
   };
 
   const pnlArray = [];

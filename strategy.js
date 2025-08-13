@@ -8,7 +8,8 @@ const {
   NUM_OF_LOTS,
   TAX_AND_BROKERAGE_PER_TRADE,
   TARGET,
-  TRAIL_STOPLOSS_AT,
+  TRAILING_STOPLOSS,
+  TRAIL_STOPLOSS_AT_MARKET_MOVEMENT,
   STOPLOSS,
   DAY_STOPLOSS,
   NUM_OF_TRADE_IN_A_DAY,
@@ -45,7 +46,7 @@ const tradeDecision = (previousTrades) => {
 
 const trade = (candlesData, target, initialStoploss, previousTrades) => {
   let stoploss = initialStoploss;
-  let trailStoploss = TRAIL_STOPLOSS_AT;
+  let trailingStoploss = TRAIL_STOPLOSS_AT_MARKET_MOVEMENT;
 
   const { open: tradePrice } = candlesData[0];
   const buyOrSell = tradeDecision(previousTrades);
@@ -78,11 +79,12 @@ const trade = (candlesData, target, initialStoploss, previousTrades) => {
       return { pnl: target, index, targetHit: 1, ...tradeDetails };
     }
 
-    if (pnl >= trailStoploss) {
-      // stoploss = trailStoploss - TRAIL_STOPLOSS_AT;
-      // trailStoploss += Math.abs(STOPLOSS);
-      stoploss = trailStoploss - TRAIL_STOPLOSS_AT;
-      trailStoploss += trailStoploss;
+    if (pnl >= trailingStoploss) {
+      const newStoploss = trailingStoploss - TRAILING_STOPLOSS;
+      if (newStoploss > stoploss) {
+        stoploss = newStoploss;
+      }
+      trailingStoploss += TRAIL_STOPLOSS_AT_MARKET_MOVEMENT;
     }
   }
 
@@ -125,8 +127,10 @@ const backtest = (data = []) => {
     logInfo(
       "TRADE",
       buyOrSell === 1 ? "BUY" : "SELL",
+      " | ",
       pnl,
       `Day's P&L: ${dayPnl}`,
+      " | ",
       `NIFTY: ${tradePrice} - ${exitPrice}`
     );
 
