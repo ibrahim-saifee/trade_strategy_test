@@ -127,11 +127,9 @@ const backtest = (data = []) => {
     logInfo(
       "TRADE",
       buyOrSell === 1 ? "BUY" : "SELL",
-      " | ",
       pnl,
-      `Day's P&L: ${dayPnl}`,
-      " | ",
-      `NIFTY: ${tradePrice} - ${exitPrice}`
+      `| Day's P&L: ${dayPnl}`,
+      `| NIFTY: ${tradePrice} - ${exitPrice}`
     );
 
     // wait for few minute before executing next trade.

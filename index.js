@@ -1,8 +1,8 @@
-const configParameters = require("./config");
+const backtestingParameters = require("./config");
 const {
   FILE_NAME,
   SAMPLE_SIZE
-} = configParameters;
+} = backtestingParameters;
 
 const moment = require("moment");
 const { setLogger, logInfo } = require("./logger");
@@ -10,11 +10,6 @@ const { setLogger, logInfo } = require("./logger");
 const { backtest } = require("./strategy");
 const { readCsvInBatches } = require("./read_file");
 const { delay } = require("./delay");
-
-const getArg = (argument) => {
-  const value = process.argv.find(arg => arg.match(`^${argument}=`)) || '';
-  return value.replace(`${argument}=`, '');
-};
 
 const calculateStandardDeviation = (numbers) => {
   // Step 1: Calculate the mean (average)
@@ -104,8 +99,7 @@ const processBatch = (filePath) => {
 }
 
 const currentTimestamp = moment().format("_YYYYMMDDHHmm");
-const fileName = getArg("file") || FILE_NAME;
-const logFileName = fileName.replace(/.csv$/, `${currentTimestamp}.log`);
+const logFileName = FILE_NAME.replace(/.csv$/, `${currentTimestamp}.log`);
 setLogger(logFileName);
 
 (async () => {
@@ -122,7 +116,7 @@ setLogger(logFileName);
 
   const pnlArray = [];
   for (let i = 0; i < SAMPLE_SIZE; i++) {
-    const backtestResult = await processBatch(`./data_dumps/${fileName}`);
+    const backtestResult = await processBatch(`./data_dumps/${FILE_NAME}`);
 
     Object.keys(averages).forEach((param) => {
       averages[param] += backtestResult[param] || 0;
@@ -138,13 +132,10 @@ setLogger(logFileName);
 
   averages.standardDeviation = calculateStandardDeviation(pnlArray);
 
-  logInfo(`------------- ${fileName} --------------`);
+  logInfo(`------------- ${FILE_NAME} --------------`);
   logInfo(`Averages (Sample Size: ${SAMPLE_SIZE})`);
   Object.entries(averages).forEach(([param, value]) => logInfo(`${param}:`, value));
-  Object.entries({ 
-    ...configParameters, 
-    FILE_NAME: fileName 
-  }).forEach(([param, value]) => logInfo(`${param}:`, value));
+  Object.entries(backtestingParameters).forEach(([param, value]) => logInfo(`${param}:`, value));
 
   const profitableYears = pnlArray.filter(pnl => pnl > 0).length;
   const loosingYears = pnlArray.filter(pnl => pnl <= 0).length;
