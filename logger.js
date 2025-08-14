@@ -42,7 +42,7 @@ const setLogger = (fileName) => {
 const getLogger = () => logger;
 
 const logInfo = (...params) => {
-  console.log(...params);
+  // console.log(...params);
   logger.info(...params);
 }
 

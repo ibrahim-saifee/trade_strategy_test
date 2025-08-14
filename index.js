@@ -9,6 +9,7 @@ const { setLogger, logInfo } = require("./logger");
 
 const { backtest } = require("./strategy");
 const { readCsvInBatches } = require("./read_file");
+const { setupProgress } = require("./progress-bar");
 const { delay } = require("./delay");
 
 const calculateStandardDeviation = (numbers) => {
@@ -52,12 +53,12 @@ const processBatch = (filePath) => {
       filePath,
       (data) => {
         const { pnl, targetCount, stoplossCount, totalTrades: noOfTrades } = backtest(data);
-        
+
         totalPnl += pnl;
         totalTargetCount += targetCount;
         totalStoplossCount += stoplossCount;
         totalTrades += noOfTrades;
-        
+
         maxPerDayLoss = min(maxPerDayLoss, pnl);
         maxPerDayProfit = max(maxPerDayProfit, pnl);
         maxDrawDown = min(maxDrawDown, totalPnl);
@@ -114,6 +115,8 @@ setLogger(logFileName);
     totalLoosingDays: 0,
   };
 
+  const progressBar = setupProgress(backtestingParameters);
+
   const pnlArray = [];
   for (let i = 0; i < SAMPLE_SIZE; i++) {
     const backtestResult = await processBatch(`./data_dumps/${FILE_NAME}`);
@@ -123,7 +126,9 @@ setLogger(logFileName);
     });
 
     pnlArray.push(backtestResult.totalPnl);
+    progressBar.update(i + 1);
   }
+  progressBar.stop();
 
   averages = Object.keys(averages).reduce((result, param) => {
     result[param] = averages[param] / SAMPLE_SIZE;

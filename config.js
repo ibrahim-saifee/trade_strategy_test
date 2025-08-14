@@ -42,12 +42,12 @@ const configArgs = [
   },
   {
     name: "TRAILING_STOPLOSS",
-    arg: "trailing",
+    arg: "trailing-stoploss",
     defaultValue: 75,
   },
   {
     name: "TRAIL_STOPLOSS_AT_MARKET_MOVEMENT",
-    arg: "trail-at",
+    arg: "trail-stoploss-at",
     defaultValue: 25,
   },
   {
@@ -76,7 +76,7 @@ const strategyConfig = configArgs.reduce((obj, param) => {
   const defaultParser = parseInt;
   const { name, arg, defaultValue, parser = defaultParser } = param;
   const argValue = getArg(arg);
-  
+
   obj[name] = (argValue && parser(argValue)) || defaultValue;
   return obj;
 }, {});
