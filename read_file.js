@@ -1,8 +1,9 @@
 const fs = require("fs");
 const csv = require("csv-parser");
 const moment = require("moment");
+const { movingAverage, resetMovingAverage } = require("./technical-indicators/moving-average");
 
-const formatCandleData = (candleData) => {
+const parseCandleData = (candleData) => {
   const { date, open, high, low, close } = candleData;
   return {
     date: moment(date),
@@ -13,6 +14,10 @@ const formatCandleData = (candleData) => {
   };
 }
 
+const priceIndicators = (candateData) => ({
+  movingAverage: movingAverage(candateData),
+});
+
 function readCsvInBatches(filePath, processBatch, endProccessing) {
   const batch = [];
   let batchDate;
@@ -20,7 +25,9 @@ function readCsvInBatches(filePath, processBatch, endProccessing) {
   fs.createReadStream(filePath)
     .pipe(csv())
     .on("data", (row) => {
-      const candleData = formatCandleData(row);
+      const candleData = parseCandleData(row);
+      Object.assign(candleData, priceIndicators(candleData));
+
       if (!batchDate) {
         batchDate = candleData.date;
       }
@@ -40,6 +47,7 @@ function readCsvInBatches(filePath, processBatch, endProccessing) {
         processBatch(batch); // Process remaining rows
       }
 
+      resetMovingAverage();
       endProccessing && endProccessing();
     })
     .on("error", (err) => {

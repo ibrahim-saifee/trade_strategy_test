@@ -70,6 +70,17 @@ const configArgs = [
     arg: "trade-interval",
     defaultValue: 5,
   },
+  {
+    name: "MOVING_AVERAGE",
+    arg: "moving-average",
+    defaultValue: 200,
+  },
+  {
+    name: "TRADE_DECISION",
+    arg: "trade-decision",
+    defaultValue: "ma",
+    parser: (str) => String(str),
+  }
 ];
 
 const strategyConfig = configArgs.reduce((obj, param) => {

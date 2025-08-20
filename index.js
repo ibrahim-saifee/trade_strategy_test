@@ -36,7 +36,7 @@ const percentage = (totalTargetCount, totalStoplossCount) =>
 const min = (a, b) => a < b ? a : b;
 const max = (a, b) => a > b ? a : b;
 
-const processBatch = (filePath) => {
+const processFile = (filePath) => {
   let totalPnl = 0;
   let totalTargetCount = 0;
   let totalStoplossCount = 0;
@@ -48,6 +48,8 @@ const processBatch = (filePath) => {
   let totalProfitableDays = 0;
   let totalLoosingDays = 0;
 
+  const pnlArray = [];
+
   return new Promise((resolve, reject) => {
     readCsvInBatches(
       filePath,
@@ -55,6 +57,7 @@ const processBatch = (filePath) => {
         const { pnl, targetCount, stoplossCount, totalTrades: noOfTrades } = backtest(data);
 
         totalPnl += pnl;
+        pnlArray.push(totalPnl);
         totalTargetCount += targetCount;
         totalStoplossCount += stoplossCount;
         totalTrades += noOfTrades;
@@ -93,6 +96,7 @@ const processBatch = (filePath) => {
           maxPerDayProfit,
           totalProfitableDays,
           totalLoosingDays,
+          pnlArray,
         });
       }
     );
@@ -116,10 +120,11 @@ setLogger(logFileName);
   };
 
   const progressBar = setupProgress(backtestingParameters);
+  let dailyPnlsArray;
 
   const pnlArray = [];
   for (let i = 0; i < SAMPLE_SIZE; i++) {
-    const backtestResult = await processBatch(`./data_dumps/${FILE_NAME}`);
+    const backtestResult = await processFile(`./data_dumps/${FILE_NAME}`);
 
     Object.keys(averages).forEach((param) => {
       averages[param] += backtestResult[param] || 0;
@@ -127,6 +132,7 @@ setLogger(logFileName);
 
     pnlArray.push(backtestResult.totalPnl);
     progressBar.update(i + 1);
+    dailyPnlsArray = backtestResult.pnlArray;
   }
   progressBar.stop();
 
@@ -145,6 +151,7 @@ setLogger(logFileName);
   const profitableYears = pnlArray.filter(pnl => pnl > 0).length;
   const loosingYears = pnlArray.filter(pnl => pnl <= 0).length;
   logInfo("---------------------------------------");
+  logInfo("Daily PnLs", dailyPnlsArray);
   logInfo("Profitable Years", profitableYears, "| Loosing Years", loosingYears, `| (${percentage(profitableYears, loosingYears)}%)`);
 
   const maxProfit = pnlArray.reduce((max, n) => max > n ? max : n, 0);
