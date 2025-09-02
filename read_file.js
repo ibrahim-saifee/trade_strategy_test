@@ -2,6 +2,7 @@ const fs = require("fs");
 const csv = require("csv-parser");
 const moment = require("moment");
 const { movingAverage, resetMovingAverage } = require("./technical-indicators/moving-average");
+const { eMovingAverage, resetEMovingAverage, getTrendFromEma } = require("./technical-indicators/exponential-moving-average");
 
 const parseCandleData = (candleData) => {
   const { date, open, high, low, close } = candleData;
@@ -12,10 +13,12 @@ const parseCandleData = (candleData) => {
     low: parseInt(low),
     close: parseInt(close),
   };
-}
+};
 
 const priceIndicators = (candateData) => ({
-  movingAverage: movingAverage(candateData),
+  sma: movingAverage(candateData.open),
+  ema: eMovingAverage(candateData.open),
+  trend: getTrendFromEma(),
 });
 
 function readCsvInBatches(filePath, processBatch, endProccessing) {
@@ -48,6 +51,7 @@ function readCsvInBatches(filePath, processBatch, endProccessing) {
       }
 
       resetMovingAverage();
+      resetEMovingAverage();
       endProccessing && endProccessing();
     })
     .on("error", (err) => {

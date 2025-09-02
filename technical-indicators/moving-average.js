@@ -1,26 +1,26 @@
-const { MOVING_AVERAGE } = require("../config");
+const { SMA_PERIOD } = require("../config");
 
-const candlesData = [];
+const prices = [];
 
-const candleDataPush = (data, maxLength) => {
-  candlesData.push(data);
+const periodicPush = (price, maxLength) => {
+  prices.push(price);
 
-  if (candlesData.length > maxLength) {
-    candlesData.shift();
+  if (prices.length > maxLength) {
+    prices.shift();
   }
 
-  return candlesData;
+  return prices;
 };
 
-const movingAverage = (data, maxLength = MOVING_AVERAGE) => {
-  candleDataPush(data, maxLength);
-  const sum = candlesData.reduce((sum, data) => sum + data.close, 0);
+const movingAverage = (price, maxLength = SMA_PERIOD) => {
+  periodicPush(price, maxLength);
+  const sum = prices.reduce((sum, p) => sum + p, 0);
 
-  return sum / candlesData.length;
+  return sum / prices.length;
 };
 
 const resetMovingAverage = () => {
-  candlesData.length = 0;
+  prices.length = 0;
 }
 
 module.exports = {

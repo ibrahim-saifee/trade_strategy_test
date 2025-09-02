@@ -1,7 +1,8 @@
 const backtestingParameters = require("./config");
 const {
   FILE_NAME,
-  SAMPLE_SIZE
+  SAMPLE_SIZE,
+  DEBUG_TRADES
 } = backtestingParameters;
 
 const moment = require("moment");
@@ -73,14 +74,16 @@ const processFile = (filePath) => {
           totalStoplossCount,
         ).toFixed(2);
 
-        logInfo(
-          `Total P&L: ${totalPnl}`,
-          `| TRGT: ${totalTargetCount}, SL: ${totalStoplossCount}`,
-          `| Winning Probability: ${winningProbability}%`,
-          `| Max Draw Down: ${maxDrawDown}`,
-          `| Total Trades: ${totalTrades}`
-        );
-        logInfo("=======================================");
+        if (DEBUG_TRADES) {
+          logInfo(
+            `Total P&L: ${totalPnl}`,
+            `| TRGT: ${totalTargetCount}, SL: ${totalStoplossCount}`,
+            `| Winning Probability: ${winningProbability}%`,
+            `| Max Draw Down: ${maxDrawDown}`,
+            `| Total Trades: ${totalTrades}`
+          );
+          logInfo("=======================================");
+        }
 
         // delay(1000);
       },

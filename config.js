@@ -63,7 +63,7 @@ const configArgs = [
   {
     name: "START_DAY_TRADE_AFTER_MINUTES",
     arg: "start-time",
-    defaultValue: 45,
+    defaultValue: 30,
   },
   {
     name: "DURATION_BETWEEN_TRADES_IN_MINUTES",
@@ -71,15 +71,32 @@ const configArgs = [
     defaultValue: 5,
   },
   {
-    name: "MOVING_AVERAGE",
-    arg: "moving-average",
-    defaultValue: 200,
+    name: "SMA_PERIOD",
+    arg: "sma-period",
+    defaultValue: 100,
+  },
+  {
+    name: "EMA_PERIOD",
+    arg: "ema-period",
+    defaultValue: 10,
   },
   {
     name: "TRADE_DECISION",
     arg: "trade-decision",
-    defaultValue: "ma",
+    defaultValue: "emap",
     parser: (str) => String(str),
+  },
+  {
+    name: "FIRST_MOCK_TRADE",
+    arg: "first-mock-trade",
+    defaultValue: false,
+    parser: (flag) => flag == "true",
+  },
+  {
+    name: "DEBUG_TRADES",
+    arg: "debug-trades",
+    defaultValue: false,
+    parser: (debug) => debug == "true",
   }
 ];
 

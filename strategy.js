@@ -16,27 +16,56 @@ const {
   START_DAY_TRADE_AFTER_MINUTES,
   DURATION_BETWEEN_TRADES_IN_MINUTES,
   TRADE_DECISION,
+  DEBUG_TRADES,
+  FIRST_MOCK_TRADE,
 } = require("./config");
 
 const formattedDate = (date) => date ? `${date.format("MMM DD, YYYY ddd HH:mm:ss")}` : "";
 
+const tradeDecisionByEMA = (tradeCandle) => {
+  const trend = tradeCandle?.trend;
+  if (trend === "uptrend") {
+    return 1;
+  } else if (trend === "downtrend") {
+    return -1;
+  }
+  // if (tradeCandle?.ema) {
+  //   const { open, ema } = tradeCandle;
+  //   return open > ema ? 1 : -1;
+  // }
+};
+
 const tradeDecisionByMA = (tradeCandle) => {
-  if (tradeCandle?.movingAverage) {
-    const { close, movingAverage } = tradeCandle;
-    return close > movingAverage ? 1 : -1;
+  if (tradeCandle?.sma) {
+    const { open, sma } = tradeCandle;
+    return open > sma ? 1 : -1;
   }
 };
 
-const tradeDecisionByPreviousTradeAndMA = (recentTrade, tradeCandle) => {
+const tradeDecisionByPreviousTrade = (recentTrade) => {
   if (recentTrade?.stoplossHit) {
     return recentTrade.buyOrSell * -1;
   } else if (recentTrade?.targetHit) {
-    return recentTrade.buyOrSell;
-  } else if (tradeCandle?.movingAverage) {
-    const { close, movingAverage } = tradeCandle;
-    return close > movingAverage ? 1 : -1;
+    // return recentTrade.buyOrSell;
+    return recentTrade.buyOrSell * -1;
+  }
+}
+
+const tradeDecisionByMaOrPreviousTrade = (recentTrade, tradeCandle) => {
+  if (recentTrade) {
+    return tradeDecisionByPreviousTrade(recentTrade);
+  } else if (tradeCandle?.sma) {
+    return tradeDecisionByMA(tradeCandle);
   }
 };
+
+const tradeDecisionByEmaOrPreviousTrade = (recentTrade, tradeCandle) => {
+  if (recentTrade) {
+    return tradeDecisionByPreviousTrade(recentTrade);
+  } else if (tradeCandle?.ema) {
+    return tradeDecisionByEMA(tradeCandle);
+  }
+}
 
 const randomTradeDecision = () => {
   const randomNumber = (n) => parseInt(Math.random() * n);
@@ -51,12 +80,24 @@ const tradeDecision = (previousTrades, tradeCandle) => {
 
   let decision;
   switch (TRADE_DECISION) {
-    case "ma":
+    case "sma":
       decision = tradeDecisionByMA(tradeCandle);
       break;
 
-    case "map":
-      decision = tradeDecisionByPreviousTradeAndMA(recentTrade, tradeCandle);
+    case "emap":
+      decision = tradeDecisionByEmaOrPreviousTrade(recentTrade, tradeCandle);
+      break;
+
+    case "ema":
+      decision = tradeDecisionByEMA(tradeCandle);
+      break;
+
+    case "smap":
+      decision = tradeDecisionByMaOrPreviousTrade(recentTrade, tradeCandle);
+      break;
+
+    case "p":
+      decision = tradeDecisionByPreviousTrade(recentTrade);
       break;
 
     case "random":
@@ -67,30 +108,11 @@ const tradeDecision = (previousTrades, tradeCandle) => {
   decision ||= randomTradeDecision();
 
   return decision;
-
-  // if (tradeCandle?.movingAverage) {
-  //   const { close, movingAverage } = tradeCandle;
-  //   return close > movingAverage ? 1 : -1;
-  // }
-
-  // if (recentTrade?.stoplossHit) {
-  //   return recentTrade.buyOrSell * -1;
-  // } else if (recentTrade?.targetHit) {
-  //   return recentTrade.buyOrSell;
-  // } else if (tradeCandle?.movingAverage) {
-  //   const { close, movingAverage } = tradeCandle;
-  //   return close > movingAverage ? 1 : -1;
-  // }
-
-  // const randomNumber = (n) => parseInt(Math.random() * n);
-
-  // const random100 = randomNumber(100);
-  // return random100 > 50 ? 1 : -1; // 1 => buy and -1 => sell
 };
 
-const trade = (candlesData, target, initialStoploss, previousTrades) => {
+const trade = (candlesData, target, initialStoploss, initialTrailingStoploss, previousTrades = []) => {
   let stoploss = initialStoploss;
-  let trailingStoploss = TRAIL_STOPLOSS_AT_MARKET_MOVEMENT;
+  let trailingStoploss = initialTrailingStoploss;
 
   const buyOrSell = tradeDecision(previousTrades, candlesData[0]);
   const { open: tradePrice } = candlesData[0];
@@ -123,7 +145,7 @@ const trade = (candlesData, target, initialStoploss, previousTrades) => {
       return { pnl: target, index, targetHit: 1, ...tradeDetails };
     }
 
-    if (pnl >= trailingStoploss) {
+    if (trailingStoploss && pnl >= trailingStoploss) {
       const newStoploss = trailingStoploss - TRAILING_STOPLOSS;
       if (newStoploss > stoploss) {
         stoploss = newStoploss;
@@ -138,10 +160,46 @@ const trade = (candlesData, target, initialStoploss, previousTrades) => {
 const backtest = (data = []) => {
   if (!data.length) return;
 
+  const previousTrades = [];
   let candlesData = data.slice(START_DAY_TRADE_AFTER_MINUTES);
-  logInfo(
-    `Date: ${formattedDate(candlesData[0]?.date)} - ${formattedDate(candlesData[candlesData.length - 1]?.date)}`
-  );
+
+  // Intial wait for the market to move either side 50 points.
+  const mockTrade = () => {
+    const {
+      index: startIndex,
+      buyOrSell,
+      targetHit,
+      stoplossHit,
+      tradePrice,
+      exitPrice,
+    } = trade(candlesData, 50, -50, 10000, previousTrades);
+
+    candlesData = candlesData.slice(startIndex + 1);
+    previousTrades.push({
+      buyOrSell, //: buyOrSell * (50 / (startIndex - START_DAY_TRADE_AFTER_MINUTES) > 3.33 ? -1 : 1),
+      targetHit,
+      stoplossHit,
+    });
+
+    if (DEBUG_TRADES) {
+      logInfo(
+        "MOCK FIRST TRADE",
+        buyOrSell === 1 ? "BUY" : "SELL",
+        `| Target: ${targetHit || 0}`,
+        `| Stoploss: ${stoplossHit || 0}`,
+        `| NIFTY: ${tradePrice} - ${exitPrice}`,
+      );
+    }
+  };
+  if (FIRST_MOCK_TRADE) {
+    mockTrade();
+  }
+
+  if (DEBUG_TRADES) {
+    logInfo(
+      `Date: ${formattedDate(candlesData[0]?.date)} - ${formattedDate(candlesData[candlesData.length - 1]?.date)}`
+    );
+  }
 
   const calculateAmount = (priceChange) => LOT_SIZE * NUM_OF_LOTS * priceChange;
 
@@ -149,11 +207,9 @@ const backtest = (data = []) => {
   let index = 0;
   let stoplossCount = 0;
   let targetCount = 0;
-  // let previousTrade;
-  const previousTrades = [];
   let totalTrades = 0;
   for (index = 0; index < candlesData.length; index++) {
-    const tradeResult = trade(candlesData.slice(index), TARGET, STOPLOSS, previousTrades);
+    const tradeResult = trade(candlesData.slice(index), TARGET, STOPLOSS, TRAIL_STOPLOSS_AT_MARKET_MOVEMENT, previousTrades);
     totalTrades += 1;
     const {
       pnl,
@@ -167,15 +223,19 @@ const backtest = (data = []) => {
 
     dayPnl += calculateAmount(pnl) - TAX_AND_BROKERAGE_PER_TRADE;
 
-    logInfo(`${formattedDate(candlesData[index]?.date)} - ${formattedDate(candlesData[index + nextIndex]?.date)}`);
-    logInfo(
-      "TRADE",
-      buyOrSell === 1 ? "BUY" : "SELL",
-      pnl,
-      `| Day's P&L: ${dayPnl}`,
-      `| NIFTY: ${tradePrice} - ${exitPrice}`,
-      `| Moving Average: ${candlesData[index]?.movingAverage}`
-    );
+    if (DEBUG_TRADES) {
+      logInfo(`${formattedDate(candlesData[index]?.date)} - ${formattedDate(candlesData[index + nextIndex]?.date)}`);
+      logInfo(
+        "TRADE",
+        buyOrSell === 1 ? "BUY" : "SELL",
+        pnl,
+        `| Day's P&L: ${dayPnl}`,
+        `| NIFTY: ${tradePrice} - ${exitPrice}`,
+        `| EMA: ${candlesData[index]?.ema?.toFixed(2)}`,
+        `(${candlesData[index]?.trend})`,
+        `| SMA: ${candlesData[index]?.sma?.toFixed(2)}`
+      );
+    }
 
     // wait for few minute before executing next trade.
     index += nextIndex + DURATION_BETWEEN_TRADES_IN_MINUTES;
