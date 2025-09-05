@@ -8,7 +8,7 @@ const {
 const moment = require("moment");
 const { setLogger, logInfo } = require("./logger");
 
-const { backtest } = require("./strategy");
+const { backtestIntraday } = require("./strategy");
 const { readCsvInBatches } = require("./read_file");
 const { setupProgress } = require("./progress-bar");
 const { delay } = require("./delay");
@@ -55,7 +55,7 @@ const processFile = (filePath) => {
     readCsvInBatches(
       filePath,
       (data) => {
-        const { pnl, targetCount, stoplossCount, totalTrades: noOfTrades } = backtest(data);
+        const { pnl, targetCount, stoplossCount, totalTrades: noOfTrades } = backtestIntraday(data);
 
         totalPnl += pnl;
         pnlArray.push(totalPnl);
@@ -124,8 +124,8 @@ setLogger(logFileName);
 
   const progressBar = setupProgress(backtestingParameters);
   let dailyPnlsArray;
-
   const pnlArray = [];
+
   for (let i = 0; i < SAMPLE_SIZE; i++) {
     const backtestResult = await processFile(`./data_dumps/${FILE_NAME}`);
 

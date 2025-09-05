@@ -133,13 +133,17 @@ const trade = (candlesData, target, initialStoploss, initialTrailingStoploss, pr
   let index = 0;
   let tradeDetails = {};
   for (index = 0; index < candlesData.length; index++) {
-    const { close: currentPrice, high, low, date } = candlesData[index];
+    const { close: currentPrice, high, low, date, trend } = candlesData[index];
     pnl = checkPnl(currentPrice, high, low);
 
     tradeDetails = { buyOrSell, tradePrice, exitPrice: currentPrice };
     if (pnl <= stoploss) {
       return { pnl: stoploss, index, stoplossHit: 1, ...tradeDetails };
     }
+
+    // if ((buyOrSell === 1 && trend === "downtrend") || (buyOrSell === -1 && trend === "uptrend")) {
+    //   return { pnl, index, stoplossHit: 1, ...tradeDetails };
+    // }
 
     if (pnl >= target) {
       return { pnl: target, index, targetHit: 1, ...tradeDetails };
@@ -157,7 +161,7 @@ const trade = (candlesData, target, initialStoploss, initialTrailingStoploss, pr
   return { pnl, index, ...tradeDetails };
 }
 
-const backtest = (data = []) => {
+const backtestIntraday = (data = []) => {
   if (!data.length) return;
 
   const previousTrades = [];
@@ -259,5 +263,5 @@ const backtest = (data = []) => {
 };
 
 module.exports = {
-  backtest,
+  backtestIntraday,
 }
